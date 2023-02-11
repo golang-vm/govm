@@ -6,7 +6,7 @@ import (
 	"math"
 	"os"
 
-	. "github.com/kmcsr/govm/encoding"
+	. "github.com/golang-vm/govm/encoding"
 )
 
 type Callable = func([]Value) []Value

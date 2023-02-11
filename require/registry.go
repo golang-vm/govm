@@ -4,8 +4,8 @@ package vm_require
 import (
 	"strings"
 
-	encoding "github.com/kmcsr/govm/encoding"
-	cpu "github.com/kmcsr/govm/cpu"
+	encoding "github.com/golang-vm/govm/encoding"
+	cpu "github.com/golang-vm/govm/cpu"
 )
 
 type Registry struct{

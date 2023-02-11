@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"fmt"
 
-	cpu "github.com/kmcsr/govm/cpu"
-	require "github.com/kmcsr/govm/require"
+	cpu "github.com/golang-vm/govm/cpu"
+	require "github.com/golang-vm/govm/require"
 )
 
 func main(){

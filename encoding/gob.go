@@ -26,6 +26,7 @@ type Gob struct{
 	code io.ReaderAt
 	offset int64
 
+	strlst string
 	labels map[string]LabelMeta
 }
 

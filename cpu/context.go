@@ -3,7 +3,7 @@ package vm_cpu
 import (
 	"io"
 
-	encoding "github.com/kmcsr/govm/encoding"
+	encoding "github.com/golang-vm/govm/encoding"
 )
 
 type Context struct {
