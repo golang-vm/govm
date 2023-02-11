@@ -4,7 +4,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
+
 	cpu "github.com/kmcsr/govm/cpu"
 	require "github.com/kmcsr/govm/require"
 )
@@ -40,7 +40,7 @@ func main(){
 		cpu.CALLN, 0x01,
 			0x00, 0x07, 'p', 'r', 'i', 'n', 't', 'l', 'n',
 		cpu.SETB, 0x01, 0x04,
-		cpu.EXIT, 0x01,
+		cpu.EXIT, 0x1f,
 	})
 	c := cpu.NewCpu(cpu.NewContext(buf, 0), reg)
 	err := c.Run()

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 
 	. "github.com/kmcsr/govm/encoding"
 )
@@ -634,7 +635,7 @@ func (cpu *Cpu) Tick() (err error) {
 		}
 		call(cpu.context)
 		cpu.context = cpu.context.Parent()
-	case CALL_GO:
+	case CALLG:
 		var n uint8
 		if n, err = ReadUint8(r); err != nil {
 			return
@@ -661,7 +662,7 @@ func (cpu *Cpu) Tick() (err error) {
 		go func(){
 			cpu2.Run()
 		}()
-	// case CALL_DEFER:
+	// case CALLD:
 	// 	pkg := (string)(readFull(r, make([]byte, MustReadUint16(r))))
 	// 	label := (string)(readFull(r, make([]byte, MustReadUint8(r))))
 	// 	cpu.context.AddDefer(pkg, label)
