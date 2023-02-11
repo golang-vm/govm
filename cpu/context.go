@@ -1,4 +1,5 @@
-package vm_cpu
+
+package cpu
 
 import (
 	"io"
@@ -13,18 +14,21 @@ type Context struct {
 	stack *StackFrame
 	args []Value
 	variables map[string]Value
+	strlst string
 
 	parent *Context
 }
 
 var _ io.Reader = (*Context)(nil)
 
-func NewContext(prog io.ReaderAt, off int64) *Context {
+func NewContext(label encoding.LabelMeta, p *Context) *Context {
 	return &Context{
-		prog: prog,
-		pc: off,
+		prog: label.Pkg.Program(),
+		pc: label.Offset,
 		stack: GetStackFrame(),
 		variables: make(map[string]Value),
+		strlst: label.Pkg.Strlst(),
+		parent: p,
 	}
 }
 
@@ -62,19 +66,12 @@ func (c *Context) Args() []Value {
 	return c.args
 }
 
-func (c *Context) Parent() (*Context) {
-	return c.parent
+func (c *Context) Strlst() string {
+	return c.strlst
 }
 
-func (c *Context) NewCall(label encoding.LabelMeta) (nc *Context) {
-	nc = &Context{
-		prog: label.Program,
-		pc: label.Offset,
-		stack: GetStackFrame(),
-		variables: make(map[string]Value),
-		parent: c,
-	}
-	return
+func (c *Context) Parent() *Context {
+	return c.parent
 }
 
 func (c *Context) NewNativeCall(label string) (nc *Context) {

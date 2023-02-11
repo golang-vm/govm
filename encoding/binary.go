@@ -1,5 +1,5 @@
 
-package vm_encoding
+package encoding
 
 import (
 	"io"
@@ -155,6 +155,15 @@ func ReadByte3(r io.Reader)(a, b, c byte, err error){
 		return
 	}
 	a, b, c = buf[0], buf[1], buf[2]
+	return
+}
+
+func ReadByte4(r io.Reader)(a, b, c, d byte, err error){
+	var buf [4]byte
+	if _, err = io.ReadFull(r, buf[:]); err != nil {
+		return
+	}
+	a, b, c, d = buf[0], buf[1], buf[2], buf[3]
 	return
 }
 

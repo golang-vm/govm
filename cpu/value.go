@@ -1,4 +1,5 @@
-package vm_cpu
+
+package cpu
 
 import (
 	"unsafe"
@@ -65,7 +66,7 @@ type (
 
 	sliceItem   struct{ v []Value }
 	esliceItem  struct{ n int }
-	mapItem   struct{ v map[Value]Value }
+	mapItem     struct{ v map[Value]Value }
 )
 
 var Nil Value = nilItem{}
@@ -193,13 +194,7 @@ func (v boolItem) Key(k Value) Value           { panic("Unsupported operation") 
 func (v boolItem) HasKey(k Value) bool         { panic("Unsupported operation") }
 func (v boolItem) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
-func (v int8Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
-}
+func (v int8Item) Bool() bool       { return v.v != 0 }
 func (v int8Item) Int8() int8       { return v.v }
 func (v int8Item) Int16() int16     { return (int16)(v.v) }
 func (v int8Item) Int32() int32     { return (int32)(v.v) }
@@ -224,13 +219,7 @@ func (v int8Item) Key(k Value) Value           { panic("Unsupported operation") 
 func (v int8Item) HasKey(k Value) bool         { panic("Unsupported operation") }
 func (v int8Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
-func (v int16Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
-}
+func (v int16Item) Bool() bool       { return v.v != 0 }
 func (v int16Item) Int8() int8       { return (int8)(v.v) }
 func (v int16Item) Int16() int16     { return v.v }
 func (v int16Item) Int32() int32     { return (int32)(v.v) }
@@ -255,13 +244,7 @@ func (v int16Item) Key(k Value) Value           { panic("Unsupported operation")
 func (v int16Item) HasKey(k Value) bool         { panic("Unsupported operation") }
 func (v int16Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
-func (v int32Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
-}
+func (v int32Item) Bool() bool       { return v.v != 0 }
 func (v int32Item) Int8() int8       { return (int8)(v.v) }
 func (v int32Item) Int16() int16     { return (int16)(v.v) }
 func (v int32Item) Int32() int32     { return v.v }
@@ -286,13 +269,7 @@ func (v int32Item) Key(k Value) Value           { panic("Unsupported operation")
 func (v int32Item) HasKey(k Value) bool         { panic("Unsupported operation") }
 func (v int32Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
-func (v int64Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
-}
+func (v int64Item) Bool() bool       { return v.v != 0 }
 func (v int64Item) Int8() int8       { return (int8)(v.v) }
 func (v int64Item) Int16() int16     { return (int16)(v.v) }
 func (v int64Item) Int32() int32     { return (int32)(v.v) }
@@ -317,13 +294,7 @@ func (v int64Item) Key(k Value) Value           { panic("Unsupported operation")
 func (v int64Item) HasKey(k Value) bool         { panic("Unsupported operation") }
 func (v int64Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
-func (v uint8Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
-}
+func (v uint8Item) Bool() bool       { return v.v != 0 }
 func (v uint8Item) Int8() int8       { return (int8)(v.v) }
 func (v uint8Item) Int16() int16     { return (int16)(v.v) }
 func (v uint8Item) Int32() int32     { return (int32)(v.v) }
@@ -348,13 +319,7 @@ func (v uint8Item) Key(k Value) Value           { panic("Unsupported operation")
 func (v uint8Item) HasKey(k Value) bool         { panic("Unsupported operation") }
 func (v uint8Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
-func (v uint16Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
-}
+func (v uint16Item) Bool() bool       { return v.v != 0 }
 func (v uint16Item) Int8() int8       { return (int8)(v.v) }
 func (v uint16Item) Int16() int16     { return (int16)(v.v) }
 func (v uint16Item) Int32() int32     { return (int32)(v.v) }
@@ -379,13 +344,7 @@ func (v uint16Item) Key(k Value) Value           { panic("Unsupported operation"
 func (v uint16Item) HasKey(k Value) bool         { panic("Unsupported operation") }
 func (v uint16Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
-func (v uint32Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
-}
+func (v uint32Item) Bool() bool       { return v.v != 0 }
 func (v uint32Item) Int8() int8       { return (int8)(v.v) }
 func (v uint32Item) Int16() int16     { return (int16)(v.v) }
 func (v uint32Item) Int32() int32     { return (int32)(v.v) }
@@ -410,13 +369,7 @@ func (v uint32Item) Key(k Value) Value           { panic("Unsupported operation"
 func (v uint32Item) HasKey(k Value) bool         { panic("Unsupported operation") }
 func (v uint32Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
-func (v uint64Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
-}
+func (v uint64Item) Bool() bool       { return v.v != 0 }
 func (v uint64Item) Int8() int8       { return (int8)(v.v) }
 func (v uint64Item) Int16() int16     { return (int16)(v.v) }
 func (v uint64Item) Int32() int32     { return (int32)(v.v) }
@@ -442,11 +395,7 @@ func (v uint64Item) HasKey(k Value) bool         { panic("Unsupported operation"
 func (v uint64Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
 func (v float32Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
+	return v.v != 0
 }
 func (v float32Item) Int8() int8       { return (int8)(v.v) }
 func (v float32Item) Int16() int16     { return (int16)(v.v) }
@@ -473,11 +422,7 @@ func (v float32Item) HasKey(k Value) bool         { panic("Unsupported operation
 func (v float32Item) SetKey(k Value, val Value)   { panic("Unsupported operation") }
 
 func (v float64Item) Bool() bool {
-	if v.v == 0 {
-		return false
-	} else {
-		return true
-	}
+	return v.v != 0
 }
 func (v float64Item) Int8() int8       { return (int8)(v.v) }
 func (v float64Item) Int16() int16     { return (int16)(v.v) }

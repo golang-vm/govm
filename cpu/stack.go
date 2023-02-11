@@ -1,5 +1,5 @@
 
-package vm_cpu
+package cpu
 
 type StackFrame struct {
 	arr []Value

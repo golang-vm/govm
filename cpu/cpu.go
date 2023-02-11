@@ -1,4 +1,5 @@
-package vm_cpu
+
+package cpu
 
 import (
 	"fmt"
@@ -36,7 +37,9 @@ func (e *LookupErr) Error() string {
 type Cpu struct {
 	context *Context
 
-	r [32]uint64
+	R [32]uint64
+	P [32]Pointer
+	S [16]string
 
 	reg Registry
 
@@ -89,13 +92,13 @@ func (cpu *Cpu) Tick() (err error) {
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		return &ExitErr{(int)(cpu.r[i])}
+		return &ExitErr{(int)(cpu.R[i])}
 	case MOV:
 		var a, b byte
 		if a, b, err = ReadByte2(r); err != nil {
 			return
 		}
-		cpu.r[b] = cpu.r[a]
+		cpu.R[b] = cpu.R[a]
 	case SETB:
 		var i uint8
 		if i, err = ReadUint8(r); err != nil {
@@ -105,7 +108,7 @@ func (cpu *Cpu) Tick() (err error) {
 		if v, err = ReadUint8(r); err != nil {
 			return
 		}
-		cpu.r[i] = (uint64)(v)
+		cpu.R[i] = (uint64)(v)
 	case LOADB:
 	case STOREB:
 	case SETW:
@@ -117,7 +120,7 @@ func (cpu *Cpu) Tick() (err error) {
 		if v, err = ReadUint16(r); err != nil {
 			return
 		}
-		cpu.r[i] = (uint64)(v)
+		cpu.R[i] = (uint64)(v)
 	case LOADW:
 	case STOREW:
 	case SETI:
@@ -129,7 +132,7 @@ func (cpu *Cpu) Tick() (err error) {
 		if v, err = ReadUint32(r); err != nil {
 			return
 		}
-		cpu.r[i] = (uint64)(v)
+		cpu.R[i] = (uint64)(v)
 	case LOADI:
 	case STOREI:
 	case SETQ:
@@ -141,46 +144,81 @@ func (cpu *Cpu) Tick() (err error) {
 		if v, err = ReadUint64(r); err != nil {
 			return
 		}
-		cpu.r[i] = v
+		cpu.R[i] = v
 	case LOADQ:
 	case STOREQ:
-
+	case NEW:
+		typid := MustReadUint32(r)
+		_ = typid
+		panic("TODO")
+	case LOADP:
+	case STOREP:
+	case SETS:
+		var (
+			i uint8
+			p uint32
+			l uint32
+		)
+		if i, err = ReadUint8(r); err != nil {
+			return
+		}
+		if p, err = ReadUint32(r); err != nil {
+			return
+		}
+		if l, err = ReadUint32(r); err != nil {
+			return
+		}
+		if l == 0 {
+			cpu.S[i] = ""
+		} else {
+			cpu.S[i] = cpu.context.Strlst()[p:p + l]
+		}
+	case LOADS:
+	case STORES:
 	case PUSH:
 		var i byte
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(uint64Item{cpu.r[i]})
+		stack.Push(uint64Item{cpu.R[i]})
 	case PUSHB:
 		var i byte
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(int8Item{(int8)((uint8)(cpu.r[i]))})
+		stack.Push(int8Item{(int8)((uint8)(cpu.R[i]))})
 	case PUSHW:
 		var i byte
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(int16Item{(int16)((uint16)(cpu.r[i]))})
+		stack.Push(int16Item{(int16)((uint16)(cpu.R[i]))})
 	case PUSHI:
 		var i byte
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(int32Item{(int32)((uint32)(cpu.r[i]))})
+		stack.Push(int32Item{(int32)((uint32)(cpu.R[i]))})
 	case PUSHQ:
 		var i byte
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(int64Item{(int64)((uint64)(cpu.r[i]))})
+		stack.Push(int64Item{(int64)((uint64)(cpu.R[i]))})
+	case PUSHP:
+		var i byte
+		if i, err = ReadUint8(r); err != nil {
+			return
+		}
+		stack.Push(pointerItem{cpu.P[i]})
+	case PUSHS:
+		var i byte
+		if i, err = ReadUint8(r); err != nil {
+			return
+		}
+		stack.Push(stringItem{cpu.S[i]})
 	case POP:
 		stack.Pop()
-	case NEW:
-		typid := MustReadUint32(r)
-		_ = typid
-		panic("TODO")
 	// Number cast
 	// case B2W:
 	// 	stack.Push(int16Item{(int16)(stack.Pop().Int8())})
@@ -254,308 +292,335 @@ func (cpu *Cpu) Tick() (err error) {
 	// case D2F:
 	// 	stack.Push(float32Item{(float32)(
 	// 		stack.Pop().Float64())})
+
 	// Number opers
 	case ADD:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] + cpu.r[b]
+		cpu.R[c] = cpu.R[a] + cpu.R[b]
 	case SUB:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] - cpu.r[b]
+		cpu.R[c] = cpu.R[a] - cpu.R[b]
 	case MUL:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] * cpu.r[b]
+		cpu.R[c] = cpu.R[a] * cpu.R[b]
 	case SMUL:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)((int64)(cpu.r[a]) * (int64)(cpu.r[b]))
+		cpu.R[c] = (uint64)((int64)(cpu.R[a]) * (int64)(cpu.R[b]))
 	case QUO:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] / cpu.r[b]
+		cpu.R[c] = cpu.R[a] / cpu.R[b]
 	case SQUO:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)((int64)(cpu.r[a]) / (int64)(cpu.r[b]))
+		cpu.R[c] = (uint64)((int64)(cpu.R[a]) / (int64)(cpu.R[b]))
 	case REM:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] % cpu.r[b]
+		cpu.R[c] = cpu.R[a] % cpu.R[b]
 	case SREM:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)((int64)(cpu.r[a]) % (int64)(cpu.r[b]))
+		cpu.R[c] = (uint64)((int64)(cpu.R[a]) % (int64)(cpu.R[b]))
 	//
 	case NOT:
 		var a, b byte
 		if a, b, err = ReadByte2(r); err != nil {
 			return
 		}
-		cpu.r[b] = ^cpu.r[a]
+		cpu.R[b] = ^cpu.R[a]
 	case AND:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] & cpu.r[b]
+		cpu.R[c] = cpu.R[a] & cpu.R[b]
 	case OR:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] | cpu.r[b]
+		cpu.R[c] = cpu.R[a] | cpu.R[b]
 	case XOR:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] ^ cpu.r[b]
+		cpu.R[c] = cpu.R[a] ^ cpu.R[b]
 	case SHL:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] << cpu.r[b]
+		cpu.R[c] = cpu.R[a] << cpu.R[b]
 	case SHR:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = cpu.r[a] >> cpu.r[b]
+		cpu.R[c] = cpu.R[a] >> cpu.R[b]
 	case SSHR:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)((int8)(cpu.r[a]) >> cpu.r[b])
+		cpu.R[c] = (uint64)((int8)(cpu.R[a]) >> cpu.R[b])
 	case SSHRW:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)((int16)(cpu.r[a]) >> cpu.r[b])
+		cpu.R[c] = (uint64)((int16)(cpu.R[a]) >> cpu.R[b])
 	case SSHRI:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)((int32)(cpu.r[a]) >> cpu.r[b])
+		cpu.R[c] = (uint64)((int32)(cpu.R[a]) >> cpu.R[b])
 	case SSHRQ:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)((int64)(cpu.r[a]) >> cpu.r[b])
+		cpu.R[c] = (uint64)((int64)(cpu.R[a]) >> cpu.R[b])
 	case INC:
 		var i byte
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		cpu.r[i]++
+		cpu.R[i]++
 	case DEC:
 		var i byte
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		cpu.r[i]--
+		cpu.R[i]--
 	// Float opers
+	case FNEG:
+		var a, b byte
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)(math.Float32bits(
+			-math.Float32frombits((uint32)(cpu.R[a]))))
 	case FADD:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)(math.Float32bits(
-			math.Float32frombits((uint32)(cpu.r[a])) + math.Float32frombits((uint32)(cpu.r[b]))))
+		cpu.R[c] = (uint64)(math.Float32bits(
+			math.Float32frombits((uint32)(cpu.R[a])) + math.Float32frombits((uint32)(cpu.R[b]))))
 	case FSUB:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)(math.Float32bits(
-			math.Float32frombits((uint32)(cpu.r[a])) - math.Float32frombits((uint32)(cpu.r[b]))))
+		cpu.R[c] = (uint64)(math.Float32bits(
+			math.Float32frombits((uint32)(cpu.R[a])) - math.Float32frombits((uint32)(cpu.R[b]))))
 	case FMUL:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)(math.Float32bits(
-			math.Float32frombits((uint32)(cpu.r[a])) * math.Float32frombits((uint32)(cpu.r[b]))))
+		cpu.R[c] = (uint64)(math.Float32bits(
+			math.Float32frombits((uint32)(cpu.R[a])) * math.Float32frombits((uint32)(cpu.R[b]))))
 	case FQUO:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = (uint64)(math.Float32bits(
-			math.Float32frombits((uint32)(cpu.r[a])) / math.Float32frombits((uint32)(cpu.r[b]))))
+		cpu.R[c] = (uint64)(math.Float32bits(
+			math.Float32frombits((uint32)(cpu.R[a])) / math.Float32frombits((uint32)(cpu.R[b]))))
+	case DNEG:
+		var a, b byte
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = math.Float64bits(
+			-math.Float64frombits(cpu.R[a]))
 	case DADD:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = math.Float64bits(
-			math.Float64frombits(cpu.r[a]) + math.Float64frombits(cpu.r[b]))
+		cpu.R[c] = math.Float64bits(
+			math.Float64frombits(cpu.R[a]) + math.Float64frombits(cpu.R[b]))
 	case DSUB:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = math.Float64bits(
-			math.Float64frombits(cpu.r[a]) - math.Float64frombits(cpu.r[b]))
+		cpu.R[c] = math.Float64bits(
+			math.Float64frombits(cpu.R[a]) - math.Float64frombits(cpu.R[b]))
 	case DMUL:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = math.Float64bits(
-			math.Float64frombits(cpu.r[a]) * math.Float64frombits(cpu.r[b]))
+		cpu.R[c] = math.Float64bits(
+			math.Float64frombits(cpu.R[a]) * math.Float64frombits(cpu.R[b]))
 	case DQUO:
 		var a, b, c byte
 		if a, b, c, err = ReadByte3(r); err != nil {
 			return
 		}
-		cpu.r[c] = math.Float64bits(
-			math.Float64frombits(cpu.r[a]) / math.Float64frombits(cpu.r[b]))
+		cpu.R[c] = math.Float64bits(
+			math.Float64frombits(cpu.R[a]) / math.Float64frombits(cpu.R[b]))
 	// Bool opers
 	case LNOT:
 		var ai, bi byte
 		if ai, bi, err = ReadByte2(r); err != nil {
 			return
 		}
-		if cpu.r[ai] == 0 {
-			cpu.r[bi] = 1
+		if cpu.R[ai] == 0 {
+			cpu.R[bi] = 1
 		} else {
-			cpu.r[bi] = 0
+			cpu.R[bi] = 0
 		}
 	case LAND:
 		var ai, bi, ci byte
 		if ai, bi, ci, err = ReadByte3(r); err != nil {
 			return
 		}
-		if cpu.r[ai] & cpu.r[bi] == 0 {
-			cpu.r[ci] = 0
+		if cpu.R[ai] & cpu.R[bi] == 0 {
+			cpu.R[ci] = 0
 		} else {
-			cpu.r[ci] = 1
+			cpu.R[ci] = 1
 		}
 	case LOR:
 		var ai, bi, ci byte
 		if ai, bi, ci, err = ReadByte3(r); err != nil {
 			return
 		}
-		if cpu.r[ai] | cpu.r[bi] == 0 {
-			cpu.r[ci] = 0
+		if cpu.R[ai] | cpu.R[bi] == 0 {
+			cpu.R[ci] = 0
 		} else {
-			cpu.r[ci] = 1
+			cpu.R[ci] = 1
 		}
 	case EQ:
 		var ai, n, bi byte
 		if ai, n, bi, err = ReadByte3(r); err != nil {
 			return
 		}
-		if (uint8)(cpu.r[ai]) == n {
-			cpu.r[bi] = 1
+		if (uint8)(cpu.R[ai]) == n {
+			cpu.R[bi] = 1
 		} else {
-			cpu.r[bi] = 0
+			cpu.R[bi] = 0
 		}
 	case NE:
 		var ai, n, bi byte
 		if ai, n, bi, err = ReadByte3(r); err != nil {
 			return
 		}
-		if (uint8)(cpu.r[ai]) == n {
-			cpu.r[bi] = 0
+		if (uint8)(cpu.R[ai]) == n {
+			cpu.R[bi] = 0
 		} else {
-			cpu.r[bi] = 1
+			cpu.R[bi] = 1
 		}
 	case GT:
 		var ai, n, bi byte
 		if ai, n, bi, err = ReadByte3(r); err != nil {
 			return
 		}
-		if (int8)((uint8)(cpu.r[ai])) > (int8)(n) {
-			cpu.r[bi] = 1
+		if (int8)((uint8)(cpu.R[ai])) > (int8)(n) {
+			cpu.R[bi] = 1
 		} else {
-			cpu.r[bi] = 0
+			cpu.R[bi] = 0
 		}
 	case LT:
 		var ai, n, bi byte
 		if ai, n, bi, err = ReadByte3(r); err != nil {
 			return
 		}
-		if (int8)((uint8)(cpu.r[ai])) < (int8)(n) {
-			cpu.r[bi] = 1
+		if (int8)((uint8)(cpu.R[ai])) < (int8)(n) {
+			cpu.R[bi] = 1
 		} else {
-			cpu.r[bi] = 0
+			cpu.R[bi] = 0
 		}
 	case CMP:
 		var ai, bi, ci byte
 		if ai, bi, ci, err = ReadByte3(r); err != nil {
 			return
 		}
-		a, b := cpu.r[ai], cpu.r[bi]
+		a, b := cpu.R[ai], cpu.R[bi]
 		if a == b {
-			cpu.r[ci] = 0
+			cpu.R[ci] = 0
 		} else if a > b {
-			cpu.r[ci] = 1
+			cpu.R[ci] = 1
 		} else {
-			cpu.r[ci] = NEG1
+			cpu.R[ci] = NEG1
 		}
 	case ICMP:
 		var ai, bi, ci byte
 		if ai, bi, ci, err = ReadByte3(r); err != nil {
 			return
 		}
-		a, b := (int64)(cpu.r[ai]), (int64)(cpu.r[bi])
+		a, b := (int64)(cpu.R[ai]), (int64)(cpu.R[bi])
 		if a == b {
-			cpu.r[ci] = 0
+			cpu.R[ci] = 0
 		} else if a > b {
-			cpu.r[ci] = 1
+			cpu.R[ci] = 1
 		} else {
-			cpu.r[ci] = NEG1
+			cpu.R[ci] = NEG1
 		}
 	case FCMP:
 		var ai, bi, ci byte
 		if ai, bi, ci, err = ReadByte3(r); err != nil {
 			return
 		}
-		a, b := math.Float32frombits((uint32)(cpu.r[ai])), math.Float32frombits((uint32)(cpu.r[bi]))
+		a, b := math.Float32frombits((uint32)(cpu.R[ai])), math.Float32frombits((uint32)(cpu.R[bi]))
 		if a == b {
-			cpu.r[ci] = 0
+			cpu.R[ci] = 0
 		} else if a > b {
-			cpu.r[ci] = 1
+			cpu.R[ci] = 1
 		} else {
-			cpu.r[ci] = NEG1
+			cpu.R[ci] = NEG1
 		}
 	case DCMP:
 		var ai, bi, ci byte
 		if ai, bi, ci, err = ReadByte3(r); err != nil {
 			return
 		}
-		a, b := math.Float64frombits(cpu.r[ai]), math.Float64frombits(cpu.r[bi])
+		a, b := math.Float64frombits(cpu.R[ai]), math.Float64frombits(cpu.R[bi])
 		if a == b {
-			cpu.r[ci] = 0
+			cpu.R[ci] = 0
 		} else if a > b {
-			cpu.r[ci] = 1
+			cpu.R[ci] = 1
 		} else {
-			cpu.r[ci] = NEG1
+			cpu.R[ci] = NEG1
 		}
+	case CAT:
+		var ai, bi, ci byte
+		if ai, bi, ci, err = ReadByte3(r); err != nil {
+			return
+		}
+		cpu.S[ci] = cpu.S[ai] + cpu.S[bi]
+	case CUT:
+		var ai, bi, ci, di byte
+		if ai, bi, ci, di, err = ReadByte4(r); err != nil {
+			return
+		}
+		cpu.S[di] = cpu.S[ai][cpu.R[bi]:cpu.R[ci]]
 	case GOTO:
 		var step0 uint32
 		if step0, err = ReadUint24(r); err != nil {
@@ -575,7 +640,7 @@ func (cpu *Cpu) Tick() (err error) {
 		if i, step0, err = ReadByte2(r); err != nil {
 			return
 		}
-		if cpu.r[i] != 0 {
+		if cpu.R[i] != 0 {
 			cpu.context.pc += (int64)((int8)(step0))
 			// fmt.Printf("DEBUG: IF Jumped to 0x%x\n", cpu.context.pc)
 		}
@@ -584,47 +649,31 @@ func (cpu *Cpu) Tick() (err error) {
 		if i, step0, err = ReadByte2(r); err != nil {
 			return
 		}
-		if cpu.r[i] == 0 {
+		if cpu.R[i] == 0 {
 			cpu.context.pc += (int64)((int8)(step0))
 			// fmt.Printf("DEBUG: IFN Jumped to 0x%x\n", cpu.context.pc)
 		}
 	case CALL:
-		var n uint8
-		if n, err = ReadUint8(r); err != nil {
+		var n, s byte
+		if n, s, err = ReadByte2(r); err != nil {
 			return
 		}
-		var l uint16
-		if l, err = ReadUint16(r); err != nil {
-			return
-		}
-		label0 := make([]byte, l)
-		if _, err = io.ReadFull(r, label0); err != nil {
-			return
-		}
-		label1 := (string)(label0)
+		label1 := cpu.S[s]
 		var label LabelMeta
 		var ok bool
 		if label, ok = cpu.reg.Lookup(label1); !ok {
 			return &LookupErr{label1}
 		}
-		cpu.context = cpu.context.NewCall(label)
+		cpu.context = NewContext(label, cpu.context)
 		cpu.context.args = make([]Value, n)
 		copy(cpu.context.args, stack.arr[len(stack.arr) - (int)(n):])
 		stack.arr = stack.arr[:len(stack.arr) - (int)(n)]
 	case CALLN:
-		var n uint8
-		if n, err = ReadUint8(r); err != nil {
+		var n, s byte
+		if n, s, err = ReadByte2(r); err != nil {
 			return
 		}
-		var l uint16
-		if l, err = ReadUint16(r); err != nil {
-			return
-		}
-		label0 := make([]byte, l)
-		if _, err = io.ReadFull(r, label0); err != nil {
-			return
-		}
-		label := (string)(label0)
+		label := cpu.S[s]
 		cpu.context = cpu.context.NewNativeCall(label)
 		cpu.context.args = make([]Value, n)
 		copy(cpu.context.args, stack.arr[len(stack.arr) - (int)(n):])
@@ -654,7 +703,7 @@ func (cpu *Cpu) Tick() (err error) {
 		if label, ok = cpu.reg.Lookup(label1); !ok {
 			return &LookupErr{label1}
 		}
-		ctx := cpu.context.NewCall(label)
+		ctx := NewContext(label, cpu.context)
 		ctx.args = make([]Value, n)
 		copy(ctx.args, stack.arr[len(stack.arr) - (int)(n):])
 		stack.arr = stack.arr[:len(stack.arr) - (int)(n)]

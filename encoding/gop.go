@@ -1,5 +1,5 @@
 
-package vm_encoding
+package encoding
 
 import (
 	"archive/zip"

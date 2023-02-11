@@ -1,5 +1,5 @@
 
-package vm_encoding
+package encoding
 
 import (
 	"io"
@@ -10,57 +10,52 @@ const MagicHeader = 0xbd57a496
 
 var UnexceptMagicHeader = errors.New("Unexcept magic header")
 
+// A structure that used to save metadata of labels(methods)
 type LabelMeta struct{
-	Pkg string
-	Path string
+	Pkg *Gob
 	Name string
-	Program io.ReaderAt
 	Offset int64
 }
 
+// The type of a program
 type Gob struct{
 	parsed bool
 
 	path string
 	name string
 	code io.ReaderAt
-	offset int64
 
 	strlst string
 	labels map[string]LabelMeta
 }
 
-func NewGob(path string, code io.ReaderAt)(*Gob){
+func NewGob(path string, code io.ReaderAt) *Gob {
 	return &Gob{
 		path: path,
 		code: code,
+		labels: make(map[string]LabelMeta),
 	}
 }
 
-func (g *Gob)Path()(string){
+func (g *Gob) Path() string {
 	return g.path
 }
 
-func (g *Gob)Name()(string){
+func (g *Gob) Name() string {
 	return g.name
 }
 
-func (g *Gob)ReaderAt()(io.ReaderAt){
+func (g *Gob) Program() io.ReaderAt {
 	return g.code
 }
 
-func (g *Gob)Offset()(int64){
-	return g.offset
-}
-
-func (g *Gob)ParseMetadata()(err error){
+func (g *Gob) ParseMetadata() (err error) {
 	if g.parsed {
 		return
 	}
 	r := io.NewSectionReader(g.code, 0, -1)
 	var head [8]byte
-	_, err = r.Read(head[:4])
-	if err != nil || BytesToUint32(head[:4]) != MagicHeader {
+	if _, err = r.Read(head[:4]); err != nil || BytesToUint32(head[:4]) != MagicHeader {
 		return UnexceptMagicHeader
 	}
 	if _, err = r.Read(head[:2]); err != nil {
@@ -71,10 +66,17 @@ func (g *Gob)ParseMetadata()(err error){
 		return
 	}
 	g.name = (string)(buf)
-	if _, err = r.Read(head[:8]); err != nil {
+	if _, err = r.Read(head[:4]); err != nil {
 		return
 	}
-	g.offset = (int64)(BytesToUint64(head[:8]))
+	l := BytesToUint32(head[:4])
+	if (uint32)(len(buf)) < l {
+		buf = make([]byte, l)
+	}
+	if _, err = r.Read(buf[:l]); err != nil {
+		return
+	}
+	g.strlst = (string)(buf)
 	if _, err = r.Read(head[:4]); err != nil {
 		return
 	}
@@ -83,25 +85,15 @@ func (g *Gob)ParseMetadata()(err error){
 	}
 	for i := BytesToUint32(head[:4]); i > 0; i-- {
 		var meta LabelMeta
-		meta.Pkg = g.name
-		if _, err = r.Read(head[:1]); err != nil {
+		meta.Pkg = g
+		if _, err = r.Read(head[:8]); err != nil {
 			return
 		}
-		l := (int)(head[0])
-		if _, err = r.Read(buf[:l]); err != nil {
-			return
+		p, l := BytesToUint32(head[0:4]), BytesToUint32(head[4:8])
+		meta.Name = g.strlst[p:p + l]
+		if len(meta.Name) == 0 {
+			panic("Label name cannot be empty")
 		}
-		meta.Name = (string)(buf[:l])
-		if _, err = r.Read(head[:2]); err != nil {
-			return
-		}
-		if l = (int)(BytesToUint16(head[:2])); len(buf) < l {
-			buf = make([]byte, l)
-		}
-		if _, err = r.Read(buf[:l]); err != nil {
-			return
-		}
-		meta.Path = (string)(buf[:l])
 		if _, err = r.Read(head[:8]); err != nil {
 			return
 		}
@@ -112,7 +104,19 @@ func (g *Gob)ParseMetadata()(err error){
 	return
 }
 
-func (g *Gob)Lookup(label string)(meta LabelMeta, ok bool){
+func (g *Gob) Strlst() string {
+	return g.strlst
+}
+
+func (g *Gob) Labels() (labels []LabelMeta) {
+	labels = make([]LabelMeta, 0, len(g.labels))
+	for _, l := range g.labels {
+		labels = append(labels, l)
+	}
+	return
+}
+
+func (g *Gob) Lookup(label string) (meta LabelMeta, ok bool) {
 	meta, ok = g.labels[label]
 	return
 }

@@ -1,5 +1,5 @@
 
-package vm_require
+package require
 
 import (
 	"strings"
