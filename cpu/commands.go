@@ -1,0 +1,142 @@
+package vm_cpu
+
+type Cmd = uint8
+
+const (
+	SKIP Cmd = iota
+
+	EXIT
+
+	MOV
+	SETB
+	LOADB
+	STOREB
+	SETW
+	LOADW
+	STOREW
+	SETI
+	LOADI
+	STOREI
+	SETQ
+	LOADQ
+	STOREQ
+
+	PUSH
+	PUSHB
+	PUSHW
+	PUSHI
+	PUSHQ
+	POP
+
+	NEW
+	MAKE_SLICE
+	MAKE_MAP
+	MAKE_CHAN
+
+	// B2W
+	// B2I
+	// B2Q
+	// W2I
+	// W2Q
+	// I2Q
+	// I2F
+	// I2D
+	// UI2F
+	// UI2D
+	// Q2F
+	// Q2D
+	// UQ2F
+	// UQ2D
+	// P2U
+	// U2P
+	// F2I
+	// F2UI
+	// F2Q
+	// F2UQ
+	// F2D
+	// D2I
+	// D2UI
+	// D2Q
+	// D2UQ
+	// D2F
+
+	ADD
+	SUB
+	MUL
+	SMUL
+	QUO
+	SQUO
+	REM
+	SREM
+
+	NOT
+	AND
+	OR
+	XOR
+	SHL
+	SHR
+	SSHR
+	NOTW
+	ANDW
+	ORW
+	XORW
+	SHLW
+	SHRW
+	SSHRW
+	NOTI
+	ANDI
+	ORI
+	XORI
+	SHLI
+	SHRI
+	SSHRI
+	NOTQ
+	ANDQ
+	ORQ
+	XORQ
+	SHLQ
+	SHRQ
+	SSHRQ
+
+	INC
+	DEC
+
+	FADD
+	FSUB
+	FMUL
+	FQUO
+	DADD
+	DSUB
+	DMUL
+	DQUO
+
+	LNOT
+	LAND
+	LOR
+	EQ
+	NE
+	GT
+	LT
+	CMP
+	ICMP
+	FCMP
+	DCMP
+
+	GOTO
+	JMP
+	JMP_IF
+	JMP_IFN
+
+	CALL
+	CALLN
+	CALLG
+	CALLD
+	RET
+
+	PAN
+	REC
+
+	SEND
+	RECV
+	RECVB
+)
