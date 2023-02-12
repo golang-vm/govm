@@ -11,8 +11,9 @@ type Context struct {
 	prog io.ReaderAt
 	pc int64
 
-	stack *StackFrame
-	args []Value
+	vals  []Value
+	stack []Value
+	args  []Value
 	variables map[string]Value
 	strlst string
 
@@ -21,11 +22,11 @@ type Context struct {
 
 var _ io.Reader = (*Context)(nil)
 
-func NewContext(label encoding.LabelMeta, p *Context) *Context {
+func NewContext(label encoding.LabelMeta, p *Context, args ...Value) *Context {
 	return &Context{
 		prog: label.Pkg.Program(),
 		pc: label.Offset,
-		stack: GetStackFrame(),
+		args: args,
 		variables: make(map[string]Value),
 		strlst: label.Pkg.Strlst(),
 		parent: p,
@@ -58,12 +59,54 @@ func (c *Context) GetCmd() (cmd Cmd) {
 	return
 }
 
-func (c *Context) Stack() *StackFrame {
-	return c.stack
+func (c *Context) Vals() []Value {
+	return c.vals
+}
+
+func (c *Context) Val(i int32) *Value {
+	return &c.vals[i]
+}
+
+func (c *Context) SetVal(i int32, v Value) {
+	c.vals[i] = v
+}
+
+func (c *Context) GrowVals(n uint32) {
+	if l := (uint32)(len(c.vals)); l < n {
+		c.vals = append(c.vals, make([]Value, l - n)...)
+	}
+}
+
+func (c *Context) Push(v ...Value) {
+	c.stack = append(c.stack, v...)
+}
+
+func (c *Context) Pop() (v Value) {
+	l := len(c.stack) - 1
+	v, c.stack = c.stack[l], c.stack[:l]
+	return
+}
+
+func (c *Context) PopN(n uint32) (v []Value) {
+	return c.PopArr(make([]Value, n))
+}
+
+func (c *Context) PopArr(v []Value) []Value {
+	n := len(c.stack) - len(v)
+	if n < 0 {
+		panic("Stack index out of bounds")
+	}
+	copy(v, c.stack[n:])
+	c.stack = c.stack[:n]
+	return v
 }
 
 func (c *Context) Args() []Value {
 	return c.args
+}
+
+func (c *Context) Arg(i uint8) Value {
+	return c.args[i]
 }
 
 func (c *Context) Strlst() string {
@@ -74,9 +117,9 @@ func (c *Context) Parent() *Context {
 	return c.parent
 }
 
-func (c *Context) NewNativeCall(label string) (nc *Context) {
+func (c *Context) NewNativeCall(label string, args ...Value) (nc *Context) {
 	nc = &Context{
-		stack: GetStackFrame(),
+		args: args,
 		variables: make(map[string]Value),
 		parent: c,
 	}

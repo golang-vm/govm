@@ -11,7 +11,7 @@ import (
 )
 
 type Callable = func([]Value) []Value
-type NativeCall = func(ctx *Context) (err error)
+type NativeCall = func(ctx *Context) (n uint8)
 
 type Registry interface {
 	Lookup(label string) (meta LabelMeta, ok bool)
@@ -43,7 +43,7 @@ type Cpu struct {
 
 	reg Registry
 
-	retvals  []Value
+	retn     uint8
 	panicv   Value
 	panicing bool
 }
@@ -63,10 +63,6 @@ func (cpu *Cpu) Registry() Registry {
 	return cpu.reg
 }
 
-func (cpu *Cpu) SetReturn(v ...Value) {
-	cpu.retvals = v
-}
-
 func (cpu *Cpu) Run() (err error) {
 	for {
 		if err = cpu.Tick(); err != nil {
@@ -80,7 +76,7 @@ func (cpu *Cpu) Run() (err error) {
 
 func (cpu *Cpu) Tick() (err error) {
 	var r io.Reader = cpu.context
-	stack := cpu.context.Stack()
+	// vals := cpu.context.Vals()
 	// fmt.Printf("DEBUG: Reading 0x%x\n", cpu.context.pc)
 	cmd := cpu.context.GetCmd()
 	// fmt.Printf("DEBUG: Exe command 0x%x\n", cmd)
@@ -175,123 +171,209 @@ func (cpu *Cpu) Tick() (err error) {
 		}
 	case LOADS:
 	case STORES:
-	case PUSH:
-		var i byte
+	case PUSHU:
+		var i uint8
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(uint64Item{cpu.R[i]})
+		cpu.context.Push(uint64Item{cpu.R[i]})
 	case PUSHB:
-		var i byte
+		var i uint8
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(int8Item{(int8)((uint8)(cpu.R[i]))})
+		cpu.context.Push(int8Item{(int8)((uint8)(cpu.R[i]))})
 	case PUSHW:
-		var i byte
+		var i uint8
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(int16Item{(int16)((uint16)(cpu.R[i]))})
+		cpu.context.Push(int16Item{(int16)((uint16)(cpu.R[i]))})
 	case PUSHI:
-		var i byte
+		var i uint8
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(int32Item{(int32)((uint32)(cpu.R[i]))})
+		cpu.context.Push(int32Item{(int32)((uint32)(cpu.R[i]))})
 	case PUSHQ:
-		var i byte
+		var i uint8
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(int64Item{(int64)((uint64)(cpu.R[i]))})
+		cpu.context.Push(int64Item{(int64)((uint64)(cpu.R[i]))})
 	case PUSHP:
-		var i byte
+		var i uint8
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(pointerItem{cpu.P[i]})
+		cpu.context.Push(pointerItem{cpu.P[i]})
 	case PUSHS:
-		var i byte
+		var i uint8
 		if i, err = ReadUint8(r); err != nil {
 			return
 		}
-		stack.Push(stringItem{cpu.S[i]})
+		cpu.context.Push(stringItem{cpu.S[i]})
 	case POP:
-		stack.Pop()
+		var n uint8
+		if n, err = ReadUint8(r); err != nil {
+			return
+		}
+		cpu.context.stack = cpu.context.stack[:len(cpu.context.stack) - (int)(n)]
+	case POPU:
+		var i uint8
+		if i, err = ReadUint8(r); err != nil {
+			return
+		}
+		cpu.R[i] = cpu.context.Pop().Uint64()
+	case POPP:
+		var i uint8
+		if i, err = ReadUint8(r); err != nil {
+			return
+		}
+		cpu.P[i] = cpu.context.Pop().Pointer()
+	case POPS:
+		var i uint8
+		if i, err = ReadUint8(r); err != nil {
+			return
+		}
+		cpu.S[i] = cpu.context.Pop().String()
 	// Number cast
-	// case B2W:
-	// 	stack.Push(int16Item{(int16)(stack.Pop().Int8())})
-	// case B2I:
-	// 	stack.Push(int32Item{(int32)(stack.Pop().Int8())})
-	// case B2Q:
-	// 	stack.Push(int64Item{(int64)(stack.Pop().Int8())})
-	// case W2I:
-	// 	stack.Push(int32Item{(int32)(stack.Pop().Int16())})
-	// case W2Q:
-	// 	stack.Push(int64Item{(int64)(stack.Pop().Int16())})
-	// case I2Q:
-	// 	stack.Push(int64Item{(int64)(stack.Pop().Int32())})
-	// case I2F:
-	// 	stack.Push(float32Item{(float32)(
-	// 		stack.Pop().Int32())})
-	// case I2D:
-	// 	stack.Push(float64Item{(float64)(
-	// 		stack.Pop().Int32())})
-	// case UI2F:
-	// 	stack.Push(float32Item{(float32)(
-	// 		stack.Pop().Uint32())})
-	// case UI2D:
-	// 	stack.Push(float64Item{(float64)(
-	// 		stack.Pop().Uint32())})
-	// case Q2F:
-	// 	stack.Push(float32Item{(float32)(
-	// 		stack.Pop().Int64())})
-	// case Q2D:
-	// 	stack.Push(float64Item{(float64)(
-	// 		stack.Pop().Int64())})
-	// case UQ2F:
-	// 	stack.Push(float32Item{(float32)(
-	// 		stack.Pop().Uint64())})
-	// case UQ2D:
-	// 	stack.Push(float64Item{(float64)(
-	// 		stack.Pop().Uint64())})
-	// case P2U:
-	// 	stack.Push(uint64Item{(uint64)(
-	// 		(uintptr)(stack.Pop().Pointer()))})
-	// case U2P:
-	// 	stack.Push(pointerItem{(Pointer)(
-	// 		(uintptr)(stack.Pop().Uint64()))})
-	// case F2I:
-	// 	stack.Push(int32Item{(int32)(
-	// 		stack.Pop().Float32())})
-	// case F2UI:
-	// 	stack.Push(uint32Item{(uint32)(
-	// 		stack.Pop().Float32())})
-	// case F2Q:
-	// 	stack.Push(int64Item{(int64)(
-	// 		stack.Pop().Float32())})
-	// case F2UQ:
-	// 	stack.Push(uint64Item{(uint64)(
-	// 		stack.Pop().Float32())})
-	// case F2D:
-	// 	stack.Push(float64Item{(float64)(
-	// 		stack.Pop().Float32())})
-	// case D2I:
-	// 	stack.Push(int32Item{(int32)(
-	// 		stack.Pop().Float64())})
-	// case D2UI:
-	// 	stack.Push(uint32Item{(uint32)(
-	// 		stack.Pop().Float64())})
-	// case D2Q:
-	// 	stack.Push(int64Item{(int64)(
-	// 		stack.Pop().Float64())})
-	// case D2UQ:
-	// 	stack.Push(uint64Item{(uint64)(
-	// 		stack.Pop().Float64())})
-	// case D2F:
-	// 	stack.Push(float32Item{(float32)(
-	// 		stack.Pop().Float64())})
+	case B2Q:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((int8)(cpu.R[a]))
+	case W2Q:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((int16)(cpu.R[a]))
+	case I2Q:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((int32)(cpu.R[a]))
+	case I2F:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)(math.Float32bits(
+			(float32)((int32)(cpu.R[a]))))
+	case I2D:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = math.Float64bits(
+			(float64)((int32)(cpu.R[a])))
+	case UI2F:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)(math.Float32bits(
+			(float32)((uint32)(cpu.R[a]))))
+	case UI2D:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = math.Float64bits(
+			(float64)((uint32)(cpu.R[a])))
+	case Q2F:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)(math.Float32bits(
+			(float32)((int64)(cpu.R[a]))))
+	case Q2D:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = math.Float64bits(
+			(float64)((int64)(cpu.R[a])))
+	case UQ2F:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)(math.Float32bits(
+			(float32)(cpu.R[a])))
+	case UQ2D:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = math.Float64bits(
+			(float64)(cpu.R[a]))
+	case F2I:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((int32)(math.Float32frombits((uint32)(cpu.R[a]))))
+	case F2UI:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((uint32)(math.Float32frombits((uint32)(cpu.R[a]))))
+	case F2Q:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((int64)(math.Float32frombits((uint32)(cpu.R[a]))))
+	case F2UQ:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)(math.Float32frombits((uint32)(cpu.R[a])))
+	case F2D:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = math.Float64bits(
+			(float64)(math.Float32frombits((uint32)(cpu.R[a]))))
+	case D2I:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((int32)(math.Float64frombits(cpu.R[a])))
+	case D2UI:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((uint32)(math.Float64frombits(cpu.R[a])))
+	case D2Q:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)((int64)(math.Float64frombits(cpu.R[a])))
+	case D2UQ:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)(math.Float64frombits(cpu.R[a]))
+	case D2F:
+		var a, b uint8
+		if a, b, err = ReadByte2(r); err != nil {
+			return
+		}
+		cpu.R[b] = (uint64)(math.Float32bits(
+			(float32)(math.Float64frombits(cpu.R[a]))))
 
 	// Number opers
 	case ADD:
@@ -664,49 +746,35 @@ func (cpu *Cpu) Tick() (err error) {
 		if label, ok = cpu.reg.Lookup(label1); !ok {
 			return &LookupErr{label1}
 		}
-		cpu.context = NewContext(label, cpu.context)
-		cpu.context.args = make([]Value, n)
-		copy(cpu.context.args, stack.arr[len(stack.arr) - (int)(n):])
-		stack.arr = stack.arr[:len(stack.arr) - (int)(n)]
+		cpu.context = NewContext(label, cpu.context, cpu.context.PopN((uint32)(n))...)
 	case CALLN:
 		var n, s byte
 		if n, s, err = ReadByte2(r); err != nil {
 			return
 		}
 		label := cpu.S[s]
-		cpu.context = cpu.context.NewNativeCall(label)
-		cpu.context.args = make([]Value, n)
-		copy(cpu.context.args, stack.arr[len(stack.arr) - (int)(n):])
-		stack.arr = stack.arr[:len(stack.arr) - (int)(n)]
+		cpu.context = cpu.context.NewNativeCall(label, cpu.context.PopN((uint32)(n))...)
 		call := cpu.reg.GetNative(label)
 		if call == nil {
 			return fmt.Errorf("Native label '%s' not found", label)
 		}
-		call(cpu.context)
+		cpu.retn = call(cpu.context)
+		parent := cpu.context.Parent()
+		parent.Push(cpu.context.PopN((uint32)(cpu.retn))...)
 		cpu.context = cpu.context.Parent()
 	case CALLG:
-		var n uint8
-		if n, err = ReadUint8(r); err != nil {
+		var n, s byte
+		if n, s, err = ReadByte2(r); err != nil {
 			return
 		}
-		var l uint16
-		if l, err = ReadUint16(r); err != nil {
-			return
-		}
-		label0 := make([]byte, l)
-		if _, err = io.ReadFull(r, label0); err != nil {
-			return
-		}
-		label1 := (string)(label0)
+		label1 := cpu.S[s]
 		var label LabelMeta
 		var ok bool
 		if label, ok = cpu.reg.Lookup(label1); !ok {
 			return &LookupErr{label1}
 		}
 		ctx := NewContext(label, cpu.context)
-		ctx.args = make([]Value, n)
-		copy(ctx.args, stack.arr[len(stack.arr) - (int)(n):])
-		stack.arr = stack.arr[:len(stack.arr) - (int)(n)]
+		ctx.args = ctx.Parent().PopN((uint32)(n))
 		cpu2 := NewCpu(ctx, cpu.reg)
 		go func(){
 			cpu2.Run()
@@ -715,24 +783,30 @@ func (cpu *Cpu) Tick() (err error) {
 	// 	pkg := (string)(readFull(r, make([]byte, MustReadUint16(r))))
 	// 	label := (string)(readFull(r, make([]byte, MustReadUint8(r))))
 	// 	cpu.context.AddDefer(pkg, label)
+	case ARG:
+		var i uint8
+		if i, err = ReadUint8(r); err != nil {
+			return
+		}
+		cpu.context.Push(cpu.context.Arg(i))
 	case RET:
 		var n uint8
 		if n, err = ReadUint8(r); err != nil {
 			return
 		}
-		cpu.retvals = make([]Value, n)
-		copy(cpu.retvals, stack.arr[len(stack.arr) - (int)(n):])
-		stack.arr = stack.arr[:len(stack.arr) - (int)(n)]
-		cpu.context = cpu.context.Parent()
+		cpu.retn = n
+		parent := cpu.context.Parent()
+		parent.Push(cpu.context.PopN((uint32)(n))...)
+		cpu.context = parent
 	case PAN:
 		panic("TODO")
-		cpu.panicv = stack.Pop()
+		cpu.panicv = cpu.context.Pop()
 		cpu.panicing = true
 	case REC:
 		if cpu.panicing {
-			stack.Push(cpu.panicv)
+			cpu.context.Push(cpu.panicv)
 		} else {
-			stack.Push(Nil)
+			cpu.context.Push(nil)
 		}
 	default:
 		panic(fmt.Sprintf("Unknown command 0x%x", cmd))

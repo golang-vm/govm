@@ -41,7 +41,7 @@ const (
 	LOADS
 	STORES
 	// Stack opers
-	PUSH
+	PUSHU
 	PUSHB
 	PUSHW
 	PUSHI
@@ -49,33 +49,31 @@ const (
 	PUSHP
 	PUSHS
 	POP
+	POPU
+	POPP
+	POPS
 
-	// B2W
-	// B2I
-	// B2Q
-	// W2I
-	// W2Q
-	// I2Q
-	// I2F
-	// I2D
-	// UI2F
-	// UI2D
-	// Q2F
-	// Q2D
-	// UQ2F
-	// UQ2D
-	// P2U
-	// U2P
-	// F2I
-	// F2UI
-	// F2Q
-	// F2UQ
-	// F2D
-	// D2I
-	// D2UI
-	// D2Q
-	// D2UQ
-	// D2F
+	B2Q
+	W2Q
+	I2Q
+	I2F
+	I2D
+	UI2F
+	UI2D
+	Q2F
+	Q2D
+	UQ2F
+	UQ2D
+	F2I
+	F2UI
+	F2Q
+	F2UQ
+	F2D
+	D2I
+	D2UI
+	D2Q
+	D2UQ
+	D2F
 
 	// integer opers
 	ADD
@@ -138,6 +136,7 @@ const (
 	CALLN
 	CALLG
 	CALLD
+	ARG
 	RET
 	// panic and recover
 	PAN

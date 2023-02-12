@@ -11,6 +11,7 @@ import (
 type Registry struct{
 	natives map[string]cpu.NativeCall
 	labels map[string]encoding.LabelMeta
+	pkgs map[string]*encoding.Gob
 }
 
 var _ cpu.Registry = (*Registry)(nil)
@@ -19,16 +20,26 @@ func NewRegistry()(r *Registry){
 	return &Registry{
 		natives: make(map[string]cpu.NativeCall),
 		labels: make(map[string]encoding.LabelMeta),
+		pkgs: make(map[string]*encoding.Gob),
 	}
 }
 
 func (r *Registry)Lookup(label string)(meta encoding.LabelMeta, ok bool){
-	// TODO: use package name
 	i := strings.IndexByte(label, '@')
-	name, pkg := label[:i], label[i + 1:]
-	_, _ = name, pkg
+	if i >= 0 {
+		lb, pkg := label[:i], label[i + 1:]
+		var p *encoding.Gob
+		if p, ok = r.pkgs[pkg]; !ok {
+			return
+		}
+		return p.Lookup(lb)
+	}
 	meta, ok = r.labels[label]
 	return
+}
+
+func (r *Registry)AddPkg(p *encoding.Gob){
+	r.pkgs[p.Path()] = p
 }
 
 func (r *Registry)Register(label string, fuc any){
